@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#fbf5f0" />
+  <title>Projects · To-Do</title>
+  <script>
+    // Apply saved/system theme before first paint to avoid flash.
+    (function () {
+      try {
+        var t = localStorage.getItem("projects_theme");
+        if (!t) {
+          t = (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+        }
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    })();
+  </script>
+  <style>
+    :root {
+      --bg: #fbf5f0;
+      --card: #fffdf9;
+      --text: #4a3f47;
+      --muted: #9c8d92;
+      --line: #ecd9d9;
+      --accent: #d98ca0;
+      --accent-soft: #fbe4ea;
+      --accent-soft-hover: #f7d1db;
+      --done: #d8c4cb;
+      --danger: #e06a72;
+      --danger-soft: #fdecef;
+      --surface: #fffaf3;
+      --surface-2: #f6e9e4;
+      --surface-hover: #fffdf9;
+      --placeholder: #c4b3b9;
+      --cb-border: #e0cdc9;
+      --shadow: 0 6px 24px rgba(74, 63, 71, 0.07);
+      --shadow-sm: 0 2px 8px rgba(74, 63, 71, 0.06);
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    [data-theme="dark"] {
+      --bg: #201a1d;
+      --card: #2a2123;
+      --text: #f0e3df;
+      --muted: #b09a9c;
+      --line: #3a2d30;
+      --accent: #e8a0b8;
+      --accent-soft: #3a282d;
+      --accent-soft-hover: #4a3237;
+      --done: #6a5559;
+      --danger: #e5737b;
+      --danger-soft: #3a2021;
+      --surface: #261e20;
+      --surface-2: #302527;
+      --surface-hover: #2b2123;
+      --placeholder: #7a6366;
+      --cb-border: #423033;
+      --shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+
+    [data-theme="dark"] .priority-btn.active.low,
+    [data-theme="dark"] .priority-badge.low {
+      background: #1e3a2a; color: #6ee7a0;
+    }
+    [data-theme="dark"] .priority-btn.active.medium,
+    [data-theme="dark"] .priority-badge.medium {
+      background: #3a2e16; color: #fbbf24;
+    }
+    [data-theme="dark"] .priority-btn.active.high,
+    [data-theme="dark"] .priority-badge.high {
+      background: #3a1f24; color: #fca5ad;
+    }
+    [data-theme="dark"] .cal-cell.other-month { color: #6b565a; }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 16px;
+      line-height: 1.45;
+    }
+
+    .app {
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 8px 4px 18px;
+    }
+
+    header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.01em;
+    }
+
+    header .date-today {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .head-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .theme-btn {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease;
+      line-height: 1;
+    }
+
+    .theme-btn:hover { border-color: var(--accent); }
+    .theme-btn:active { transform: scale(0.9); }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    /* Calendar */
+    .calendar {
+      width: 100%;
+    }
+
+    .cal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .cal-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .cal-nav {
+      display: flex;
+      gap: 6px;
+    }
+
+    .cal-btn {
+      width: 34px;
+      height: 34px;
+      border: none;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-radius: 50%;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .cal-btn:hover { background: var(--accent-soft-hover); }
+    .cal-btn:active { transform: scale(0.92); }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+
+    .cal-dow {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      padding: 6px 0;
+      text-transform: uppercase;
+    }
+
+    .cal-cell {
+      aspect-ratio: 1 / 1;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select: none;
+      color: var(--text);
+      transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+      position: relative;
+    }
+
+    .cal-cell.empty { cursor: default; }
+
+    .cal-cell.other-month { color: #d8c4cb; }
+
+    .cal-cell .dot {
+      position: absolute;
+      bottom: 5px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .cal-cell:not(.empty):hover { background: var(--accent-soft); }
+    .cal-cell:not(.empty):active { transform: scale(0.93); }
+
+    .cal-cell.today {
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .cal-cell.selected {
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .cal-cell.selected .dot { background: #fff; }
+
+    /* Selected date label */
+    .selected-date {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .selected-date strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* Add form */
+    .add-form {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .add-form input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--surface);
+      outline: none;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .add-form input[type="text"]::placeholder { color: var(--placeholder); }
+    .add-form input[type="text"]:focus {
+      border-color: var(--accent);
+      background: var(--surface-hover);
+    }
+
+    .add-btn {
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px 18px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 4px 12px rgba(217, 140, 160, 0.35);
+    }
+
+    .add-btn:hover { background: #c9788f; }
+    .add-btn:active { transform: scale(0.96); }
+
+    /* Emoji + priority picker */
+    .picker-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .emoji-picker {
+      position: relative;
+    }
+
+    .emoji-btn {
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: 10px;
+      font-size: 20px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: border-color 0.15s ease, background 0.15s ease;
+      line-height: 1;
+    }
+
+    .emoji-btn:hover { border-color: var(--accent); }
+    .emoji-btn:active { transform: scale(0.95); }
+
+    .emoji-popover {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 8px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+      gap: 2px;
+      z-index: 10;
+      width: min(264px, calc(100vw - 60px));
+      max-height: 220px;
+      overflow: auto;
+      background: var(--card);
+    }
+
+    .emoji-popover[hidden] { display: none; }
+
+    .emoji-opt {
+      width: 30px;
+      height: 30px;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      font-size: 18px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background 0.12s ease, transform 0.1s ease;
+    }
+
+    .emoji-opt:hover { background: var(--accent-soft); }
+    .emoji-opt:active { transform: scale(0.85); }
+    .emoji-opt.selected { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+
+    .priority-group {
+      display: flex;
+      gap: 2px;
+      background: var(--surface-2);
+      border-radius: 10px;
+      padding: 3px;
+      flex: 1;
+    }
+
+    .priority-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 8px;
+      border-radius: 7px;
+      cursor: pointer;
+      color: var(--muted);
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .priority-btn.active.low { background: #e9f3ec; color: #2f8a5a; }
+    .priority-btn.active.medium { background: #fef3e0; color: #c47e00; }
+    .priority-btn.active.high { background: #fdeeef; color: #e0454d; }
+
+    /* Task emoji + priority badge */
+    .task-emoji {
+      flex: 0 0 auto;
+      font-size: 18px;
+      line-height: 1;
+      transition: opacity 0.15s ease;
+    }
+
+    .priority-badge {
+      flex: 0 0 auto;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 3px 7px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .priority-badge.low { background: #e9f3ec; color: #2f8a5a; }
+    .priority-badge.medium { background: #fef3e0; color: #c47e00; }
+    .priority-badge.high { background: #fdeeef; color: #e0454d; }
+
+    .task.done .priority-badge,
+    .task.done .task-emoji { opacity: 0.55; }
+
+    /* Task list */
+    .list-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .list-head h2 {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .list-head .count {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .list-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .clear-btn {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--danger);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+      white-space: nowrap;
+    }
+
+    .clear-btn:hover:not(:disabled) {
+      background: var(--danger-soft);
+      border-color: #f3c3c7;
+    }
+
+    .clear-btn:active:not(:disabled) { transform: scale(0.95); }
+
+    .clear-btn:disabled {
+      color: var(--done);
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .tasks {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .task {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      transition: background 0.15s ease, border-color 0.15s ease;
+      animation: pop 0.18s ease;
+    }
+
+    @keyframes pop {
+      from { opacity: 0; transform: translateY(4px) scale(0.99); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    .task:hover { background: var(--surface-hover); }
+
+    .checkbox {
+      flex: 0 0 auto;
+      width: 22px;
+      height: 22px;
+      border: 2px solid var(--cb-border);
+      border-radius: 6px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .checkbox:hover { border-color: var(--accent); }
+
+    .checkbox.checked {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .checkbox.checked svg { display: block; }
+    .checkbox svg { display: none; }
+
+    .task-text {
+      flex: 1;
+      min-width: 0;
+      font-size: 15px;
+      color: var(--text);
+      word-break: break-word;
+      transition: color 0.15s ease;
+    }
+
+    .task.done .task-text {
+      color: var(--done);
+      text-decoration: line-through;
+    }
+
+    .task-date {
+      flex: 0 0 auto;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .delete {
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background 0.15s ease, color 0.15s ease;
+      line-height: 1;
+    }
+
+    .delete:hover {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .delete:active { transform: scale(0.9); }
+
+    .empty-state {
+      text-align: center;
+      padding: 28px 16px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .empty-state .emoji {
+      font-size: 28px;
+      display: block;
+      margin-bottom: 8px;
+      opacity: 0.6;
+    }
+
+    /* Filter tabs */
+    .filters {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .filter {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .filter.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    footer {
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+      padding: 8px 0 4px;
+    }
+
+    @media (max-width: 380px) {
+      body { padding: 10px; }
+      header h1 { font-size: 21px; }
+      .add-form input[type="text"] { font-size: 14px; padding: 11px 12px; }
+      .add-btn { padding: 11px 14px; font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Projects</h1>
+      <div class="head-right">
+        <div class="date-today" id="todayLabel"></div>
+        <button type="button" class="theme-btn" id="themeBtn" aria-label="Toggle dark mode">🌙</button>
+      </div>
+    </header>
+
+    <!-- Calendar card -->
+    <section class="card calendar">
+      <div class="cal-head">
+        <button class="cal-btn" id="prevMonth" aria-label="Previous month">&lsaquo;</button>
+        <div class="cal-title" id="calTitle">Month Year</div>
+        <button class="cal-btn" id="nextMonth" aria-label="Next month">&rsaquo;</button>
+      </div>
+      <div class="cal-grid" id="dowGrid"></div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="selected-date">
+        Selected date:
+        <strong id="selectedLabel">—</strong>
+      </div>
+      <div class="picker-bar">
+        <div class="emoji-picker">
+          <button type="button" class="emoji-btn" id="emojiBtn" aria-label="Pick emoji">📋</button>
+          <div class="emoji-popover" id="emojiPopover" hidden></div>
+        </div>
+        <div class="priority-group" id="priorityGroup">
+          <button type="button" class="priority-btn low" data-priority="low">Low</button>
+          <button type="button" class="priority-btn medium active" data-priority="medium">Med</button>
+          <button type="button" class="priority-btn high" data-priority="high">High</button>
+        </div>
+      </div>
+      <form class="add-form" id="addForm" autocomplete="off">
+        <input type="text" id="taskInput" placeholder="Add a task for this date…" maxlength="140" />
+        <button type="submit" class="add-btn">Add</button>
+      </form>
+    </section>
+
+    <!-- Task list card -->
+    <section class="card">
+      <div class="list-head">
+        <h2>Tasks</h2>
+        <div class="list-actions">
+          <span class="count" id="count"></span>
+          <button type="button" class="clear-btn" id="clearBtn" disabled>Clear All</button>
+        </div>
+      </div>
+      <div class="filters">
+        <button class="filter active" data-filter="all">All</button>
+        <button class="filter" data-filter="active">Active</button>
+        <button class="filter" data-filter="done">Done</button>
+      </div>
+      <ul class="tasks" id="taskList"></ul>
+      <div class="empty-state" id="emptyState" hidden>
+        <span class="emoji">&#128203;</span>
+        No tasks yet. Pick a date and add one.
+      </div>
+    </section>
+
+    <footer>Saved on this device</footer>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      // ---------- config ----------
+      var SUPABASE_URL = "https://qimuhjkkotoqdvjhxuhd.supabase.co";
+      var SUPABASE_KEY = "sb_publishable_Ja9KN6RqjB3DClSQnSRwMg_Io-sblKb";
+      var TODO_TABLE = "todos";
+      var META_KEY = "projects_todo_meta_v1";
+      var OLD_TASK_KEY = "projects_todos_v1";
+      var THEME_KEY = "projects_theme";
+
+      var EMOJIS = ["📋","✅","⭐","🚀","💡","⏰","🎯","🔥","⚠️","🎉","❤️","📅","💼","🛒","✈️","💬"];
+
+      var state = {
+        tasks: [],                          // loaded from Supabase on init
+        viewDate: new Date(),               // month being viewed
+        selectedDate: todayKey(),           // yyyy-mm-dd
+        filter: "all",
+        selectedEmoji: "📋",
+        selectedPriority: "medium",
+        loading: true
+      };
+
+      // ---------- utils ----------
+      function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+      function toKey(d) {
+        return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+      }
+
+      function todayKey() { return toKey(new Date()); }
+
+      function fromKey(key) {
+        var parts = key.split("-");
+        return new Date(+parts[0], +parts[1] - 1, +parts[2]);
+      }
+
+      // ---------- supabase (REST) ----------
+      function supabaseHeaders(returnPref) {
+        var h = {
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + SUPABASE_KEY,
+          "Content-Type": "application/json"
+        };
+        if (returnPref) h["Prefer"] = returnPref;
+        return h;
+      }
+
+      async function supabaseRequest(path, options) {
+        var res = await fetch(SUPABASE_URL + "/rest/v1/" + path, options);
+        var text = await res.text();
+        var data = text ? JSON.parse(text) : null;
+        if (!res.ok) {
+          var msg = (data && (data.message || data.code)) || ("HTTP " + res.status);
+          throw new Error(msg);
+        }
+        return data;
+      }
+
+      async function dbFetchTodos() {
+        var path = TODO_TABLE + "?select=id,task,is_complete,date,created_at&order=created_at.asc";
+        return await supabaseRequest(path, { headers: supabaseHeaders(null) });
+      }
+
+      async function dbInsertTodo(payload) {
+        var data = await supabaseRequest(TODO_TABLE, {
+          method: "POST",
+          headers: supabaseHeaders("return=representation"),
+          body: JSON.stringify(payload)
+        });
+        return Array.isArray(data) ? data[0] : data;
+      }
+
+      async function dbUpdateTodo(id, patch) {
+        var path = TODO_TABLE + "?id=eq." + encodeURIComponent(id);
+        await supabaseRequest(path, {
+          method: "PATCH",
+          headers: supabaseHeaders("return=minimal"),
+          body: JSON.stringify(patch)
+        });
+      }
+
+      async function dbDeleteTodo(id) {
+        var path = TODO_TABLE + "?id=eq." + encodeURIComponent(id);
+        await supabaseRequest(path, {
+          method: "DELETE",
+          headers: supabaseHeaders("return=minimal")
+        });
+      }
+
+      async function dbDeleteAllTodos(ids) {
+        if (!ids.length) return;
+        var inList = ids.map(function (v) { return encodeURIComponent(v); }).join(",");
+        var path = TODO_TABLE + "?id=in.(" + inList + ")";
+        await supabaseRequest(path, {
+          method: "DELETE",
+          headers: supabaseHeaders("return=minimal")
+        });
+      }
+
+      // ---------- local meta (emoji + priority, not stored in DB) ----------
+      function loadMeta() {
+        try {
+          var raw = localStorage.getItem(META_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (e) { return {}; }
+      }
+      function saveMeta(meta) {
+        try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) {}
+      }
+      function setMeta(id, emoji, priority) {
+        var meta = loadMeta();
+        meta[String(id)] = { emoji: emoji, priority: priority };
+        saveMeta(meta);
+      }
+      function removeMeta(id) {
+        var meta = loadMeta();
+        delete meta[String(id)];
+        saveMeta(meta);
+      }
+
+      // ---------- mapping ----------
+      function rowToTask(row, meta) {
+        var m = (meta && meta[String(row.id)]) || {};
+        return {
+          id: row.id,
+          text: row.task,
+          done: !!row.is_complete,
+          date: row.date || (row.created_at ? String(row.created_at).slice(0, 10) : todayKey()),
+          emoji: typeof m.emoji === "string" ? m.emoji : "📋",
+          priority: (m.priority === "low" || m.priority === "medium" || m.priority === "high") ? m.priority : "medium",
+          createdAt: row.created_at || ""
+        };
+      }
+
+      async function loadAndRender() {
+        state.loading = true;
+        renderTasks();
+        try {
+          var rows = await dbFetchTodos();
+          var meta = loadMeta();
+          state.tasks = rows.map(function (r) { return rowToTask(r, meta); });
+        } catch (e) {
+          alert("Could not load tasks from Supabase:\n" + e.message);
+          state.tasks = [];
+        }
+        state.loading = false;
+        renderTasks();
+        renderCalendar();
+      }
+
+      function formatDateShort(key) {
+        if (!key) return "";
+        var d = fromKey(key);
+        var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        return months[d.getMonth()] + " " + d.getDate();
+      }
+
+      function formatDateLong(key) {
+        var d = fromKey(key);
+        var weekdays = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+        var months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+        return weekdays[d.getDay()] + ", " + months[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();
+      }
+
+      // ---------- today label ----------
+      function renderTodayLabel() {
+        document.getElementById("todayLabel").textContent = formatDateLong(todayKey());
+      }
+
+      // ---------- calendar ----------
+      function renderCalendar() {
+        var dow = ["S","M","T","W","T","F","S"];
+        var dowGrid = document.getElementById("dowGrid");
+        dowGrid.innerHTML = "";
+        for (var i = 0; i < 7; i++) {
+          var el = document.createElement("div");
+          el.className = "cal-dow";
+          el.textContent = dow[i];
+          dowGrid.appendChild(el);
+        }
+
+        var grid = document.getElementById("calGrid");
+        grid.innerHTML = "";
+
+        var months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+        var view = state.viewDate;
+        document.getElementById("calTitle").textContent = months[view.getMonth()] + " " + view.getFullYear();
+
+        var year = view.getFullYear();
+        var month = view.getMonth();
+        var firstDay = new Date(year, month, 1);
+        var startWeekday = firstDay.getDay();           // 0..6
+        var daysInMonth = new Date(year, month + 1, 0).getDate();
+        var daysInPrev = new Date(year, month, 0).getDate();
+
+        var todayK = todayKey();
+        var taskDays = {};
+        state.tasks.forEach(function (t) {
+          taskDays[t.date] = (taskDays[t.date] || 0) + 1;
+        });
+
+        // leading cells from previous month
+        for (var i = startWeekday - 1; i >= 0; i--) {
+          var day = daysInPrev - i;
+          var cell = makeCell(day, true, new Date(year, month - 1, day));
+          grid.appendChild(cell);
+        }
+
+        // current month
+        for (var d = 1; d <= daysInMonth; d++) {
+          var cell = makeCell(d, false, new Date(year, month, d));
+          var key = toKey(new Date(year, month, d));
+          if (key === todayK) cell.classList.add("today");
+          if (key === state.selectedDate) cell.classList.add("selected");
+          if (taskDays[key] && !cell.classList.contains("selected")) {
+            var dot = document.createElement("span");
+            dot.className = "dot";
+            cell.appendChild(dot);
+          }
+          grid.appendChild(cell);
+        }
+
+        // trailing cells to fill the last row
+        var totalSoFar = startWeekday + daysInMonth;
+        var trailing = (7 - (totalSoFar % 7)) % 7;
+        for (var j = 1; j <= trailing; j++) {
+          var cell = makeCell(j, true, new Date(year, month + 1, j));
+          grid.appendChild(cell);
+        }
+
+        document.getElementById("selectedLabel").textContent = formatDateLong(state.selectedDate);
+      }
+
+      function makeCell(day, otherMonth, dateObj) {
+        var cell = document.createElement("div");
+        cell.className = "cal-cell";
+        cell.textContent = String(day);
+        if (otherMonth) cell.classList.add("other-month");
+        else {
+          cell.addEventListener("click", function () {
+            state.selectedDate = toKey(dateObj);
+            renderCalendar();
+            document.getElementById("taskInput").focus();
+          });
+        }
+        return cell;
+      }
+
+      // ---------- task list ----------
+      function renderTasks() {
+        var list = document.getElementById("taskList");
+        var empty = document.getElementById("emptyState");
+        var count = document.getElementById("count");
+        list.innerHTML = "";
+
+        if (state.loading) {
+          count.textContent = "";
+          document.getElementById("clearBtn").disabled = true;
+          empty.hidden = false;
+          empty.innerHTML = '<span class="emoji">⏳</span>Loading tasks…';
+          return;
+        }
+
+        var visible = state.tasks.slice().sort(function (a, b) {
+          var ca = a.createdAt || "";
+          var cb = b.createdAt || "";
+          if (ca !== cb) return ca < cb ? -1 : 1;
+          return 0;
+        }).filter(function (t) {
+          if (state.filter === "active") return !t.done;
+          if (state.filter === "done") return t.done;
+          return true;
+        });
+
+        var activeCount = state.tasks.filter(function (t) { return !t.done; }).length;
+        count.textContent = activeCount + " active · " + state.tasks.length + " total";
+        document.getElementById("clearBtn").disabled = state.tasks.length === 0;
+
+        if (visible.length === 0) {
+          empty.hidden = false;
+          empty.innerHTML = '<span class="emoji">&#128203;</span>No tasks yet. Pick a date and add one.';
+          return;
+        }
+        empty.hidden = true;
+
+        visible.forEach(function (task) {
+          var li = document.createElement("li");
+          li.className = "task" + (task.done ? " done" : "");
+
+          var cb = document.createElement("div");
+          cb.className = "checkbox" + (task.done ? " checked" : "");
+          cb.setAttribute("role", "checkbox");
+          cb.setAttribute("aria-checked", task.done ? "true" : "false");
+          cb.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          cb.addEventListener("click", function () { toggleTask(task.id); });
+
+          var emoji = document.createElement("div");
+          emoji.className = "task-emoji";
+          emoji.textContent = task.emoji;
+
+          var text = document.createElement("div");
+          text.className = "task-text";
+          text.textContent = task.text;
+
+          var badge = document.createElement("span");
+          badge.className = "priority-badge " + task.priority;
+          badge.textContent = task.priority;
+
+          var date = document.createElement("div");
+          date.className = "task-date";
+          date.textContent = formatDateShort(task.date);
+
+          var del = document.createElement("button");
+          del.className = "delete";
+          del.setAttribute("aria-label", "Delete task");
+          del.innerHTML = "&times;";
+          del.addEventListener("click", function () { deleteTask(task.id); });
+
+          li.appendChild(cb);
+          li.appendChild(emoji);
+          li.appendChild(text);
+          li.appendChild(badge);
+          li.appendChild(date);
+          li.appendChild(del);
+          list.appendChild(li);
+        });
+      }
+
+      // ---------- actions ----------
+      async function addTask(text) {
+        var trimmed = (text || "").trim();
+        if (!trimmed) return;
+        var input = document.getElementById("taskInput");
+        var addBtn = document.querySelector(".add-btn");
+        if (addBtn) addBtn.disabled = true;
+        try {
+          var row = await dbInsertTodo({ task: trimmed, is_complete: false, date: state.selectedDate });
+          var task = rowToTask(row, {});
+          task.emoji = state.selectedEmoji;
+          task.priority = state.selectedPriority;
+          setMeta(task.id, task.emoji, task.priority);
+          state.tasks.push(task);
+          renderTasks();
+          renderCalendar();
+        } catch (e) {
+          alert("Could not save task to Supabase:\n" + e.message);
+          input.value = trimmed;
+          input.focus();
+        } finally {
+          if (addBtn) addBtn.disabled = false;
+        }
+      }
+
+      async function toggleTask(id) {
+        var task = null;
+        for (var i = 0; i < state.tasks.length; i++) {
+          if (state.tasks[i].id === id) { task = state.tasks[i]; break; }
+        }
+        if (!task) return;
+        var newDone = !task.done;
+        task.done = newDone;
+        renderTasks();
+        try {
+          await dbUpdateTodo(id, { is_complete: newDone });
+        } catch (e) {
+          task.done = !newDone;
+          renderTasks();
+          alert("Could not update task:\n" + e.message);
+        }
+      }
+
+      async function deleteTask(id) {
+        var idx = -1, removed = null;
+        for (var i = 0; i < state.tasks.length; i++) {
+          if (state.tasks[i].id === id) { idx = i; removed = state.tasks[i]; break; }
+        }
+        if (idx < 0) return;
+        state.tasks.splice(idx, 1);
+        removeMeta(id);
+        renderTasks();
+        renderCalendar();
+        try {
+          await dbDeleteTodo(id);
+        } catch (e) {
+          if (removed) {
+            state.tasks.splice(idx, 0, removed);
+            setMeta(id, removed.emoji, removed.priority);
+          }
+          renderTasks();
+          renderCalendar();
+          alert("Could not delete task from Supabase:\n" + e.message);
+        }
+      }
+
+      async function clearAllTasks() {
+        if (state.tasks.length === 0) return;
+        if (!window.confirm("Delete all " + state.tasks.length + " task(s)? This cannot be undone.")) return;
+        var ids = state.tasks.map(function (t) { return t.id; });
+        var backup = state.tasks.slice();
+        state.tasks = [];
+        var meta = loadMeta();
+        ids.forEach(function (id) { delete meta[String(id)]; });
+        saveMeta(meta);
+        renderTasks();
+        renderCalendar();
+        try {
+          await dbDeleteAllTodos(ids);
+        } catch (e) {
+          state.tasks = backup;
+          ids.forEach(function (id) {
+            var b = backup.filter(function (t) { return t.id === id; })[0];
+            if (b) setMeta(id, b.emoji, b.priority);
+          });
+          renderTasks();
+          renderCalendar();
+          alert("Could not clear tasks in Supabase:\n" + e.message);
+        }
+      }
+
+      // ---------- events ----------
+      document.getElementById("addForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+        var addBtn = document.querySelector(".add-btn");
+        if (addBtn && addBtn.disabled) return;
+        var input = document.getElementById("taskInput");
+        var value = input.value;
+        input.value = "";
+        input.focus();
+        addTask(value);
+      });
+
+      document.getElementById("prevMonth").addEventListener("click", function () {
+        state.viewDate = new Date(state.viewDate.getFullYear(), state.viewDate.getMonth() - 1, 1);
+        renderCalendar();
+      });
+
+      document.getElementById("nextMonth").addEventListener("click", function () {
+        state.viewDate = new Date(state.viewDate.getFullYear(), state.viewDate.getMonth() + 1, 1);
+        renderCalendar();
+      });
+
+      document.getElementById("clearBtn").addEventListener("click", clearAllTasks);
+
+      document.querySelectorAll(".filter").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll(".filter").forEach(function (b) { b.classList.remove("active"); });
+          btn.classList.add("active");
+          state.filter = btn.getAttribute("data-filter");
+          renderTasks();
+        });
+      });
+
+      // ---------- emoji picker ----------
+      function renderEmojiPopover() {
+        var pop = document.getElementById("emojiPopover");
+        pop.innerHTML = "";
+        EMOJIS.forEach(function (em) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "emoji-opt" + (em === state.selectedEmoji ? " selected" : "");
+          b.textContent = em;
+          b.setAttribute("aria-label", "Emoji " + em);
+          b.addEventListener("click", function () {
+            state.selectedEmoji = em;
+            document.getElementById("emojiBtn").textContent = em;
+            renderEmojiPopover();
+            pop.hidden = true;
+            document.getElementById("taskInput").focus();
+          });
+          pop.appendChild(b);
+        });
+      }
+
+      var emojiBtn = document.getElementById("emojiBtn");
+      var emojiPopover = document.getElementById("emojiPopover");
+      emojiBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        emojiPopover.hidden = !emojiPopover.hidden;
+      });
+      emojiPopover.addEventListener("click", function (e) { e.stopPropagation(); });
+      document.addEventListener("click", function () { emojiPopover.hidden = true; });
+
+      // ---------- priority picker ----------
+      function setPriority(p) {
+        state.selectedPriority = p;
+        document.querySelectorAll(".priority-btn").forEach(function (b) {
+          b.classList.toggle("active", b.getAttribute("data-priority") === p);
+        });
+      }
+      document.querySelectorAll(".priority-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          setPriority(btn.getAttribute("data-priority"));
+        });
+      });
+
+      // ---------- theme ----------
+      function currentTheme() {
+        return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+      }
+
+      function applyThemeIcon() {
+        document.getElementById("themeBtn").textContent = currentTheme() === "dark" ? "☀️" : "🌙";
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", currentTheme() === "dark" ? "#201a1d" : "#fbf5f0");
+      }
+
+      function toggleTheme() {
+        var next = currentTheme() === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+        applyThemeIcon();
+      }
+
+      document.getElementById("themeBtn").addEventListener("click", toggleTheme);
+
+      // ---------- init ----------
+      try { localStorage.removeItem(OLD_TASK_KEY); } catch (e) {}
+      renderTodayLabel();
+      renderCalendar();
+      renderEmojiPopover();
+      renderTasks();
+      applyThemeIcon();
+      loadAndRender();
+    })();
+  </script>
+</body>
+</html>

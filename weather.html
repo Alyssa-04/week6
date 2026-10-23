@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#fbf5f0" />
+  <title>Projects · Weather</title>
+  <script>
+    // Apply saved/system theme before first paint to avoid flash.
+    (function () {
+      try {
+        var t = localStorage.getItem("projects_theme");
+        if (!t) {
+          t = (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+        }
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    })();
+  </script>
+  <style>
+    :root {
+      --bg: #fbf5f0;
+      --card: #fffdf9;
+      --text: #4a3f47;
+      --muted: #9c8d92;
+      --line: #ecd9d9;
+      --accent: #d98ca0;
+      --accent-soft: #fbe4ea;
+      --accent-soft-hover: #f7d1db;
+      --danger: #e06a72;
+      --danger-soft: #fdecef;
+      --surface: #fffaf3;
+      --surface-2: #f6e9e4;
+      --surface-hover: #fffdf9;
+      --placeholder: #c4b3b9;
+      --shadow: 0 6px 24px rgba(74, 63, 71, 0.07);
+      --shadow-sm: 0 2px 8px rgba(74, 63, 71, 0.06);
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    [data-theme="dark"] {
+      --bg: #201a1d;
+      --card: #2a2123;
+      --text: #f0e3df;
+      --muted: #b09a9c;
+      --line: #3a2d30;
+      --accent: #e8a0b8;
+      --accent-soft: #3a282d;
+      --accent-soft-hover: #4a3237;
+      --danger: #e5737b;
+      --danger-soft: #3a2021;
+      --surface: #261e20;
+      --surface-2: #302527;
+      --surface-hover: #2b2123;
+      --placeholder: #7a6366;
+      --shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 16px;
+      line-height: 1.45;
+    }
+
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 8px 4px 18px;
+    }
+
+    header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.01em;
+    }
+
+    .date-today {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .head-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .theme-btn {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease;
+      line-height: 1;
+    }
+
+    .theme-btn:hover { border-color: var(--accent); }
+    .theme-btn:active { transform: scale(0.9); }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    /* Search */
+    .search-form {
+      display: flex;
+      gap: 8px;
+    }
+
+    .search-form input {
+      flex: 1;
+      min-width: 0;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--surface);
+      outline: none;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .search-form input::placeholder { color: var(--placeholder); }
+    .search-form input:focus {
+      border-color: var(--accent);
+      background: var(--surface-hover);
+    }
+
+    .search-btn {
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px 18px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.12s ease, background 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 4px 12px rgba(217, 140, 160, 0.35);
+    }
+
+    .search-btn:hover { background: #c9788f; }
+    .search-btn:active { transform: scale(0.96); }
+    .search-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+    /* Temperature unit toggle */
+    .unit-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .unit-label {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .unit-toggle {
+      display: inline-flex;
+      gap: 2px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-2);
+    }
+
+    .unit-btn {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .unit-btn:hover { color: var(--accent); }
+    .unit-btn.is-active {
+      background: var(--accent-soft);
+      color: var(--accent);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Status message (loading / empty / error) */
+    .status {
+      margin: 14px 0 0;
+      font-size: 14px;
+      text-align: center;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      animation: fade 0.2s ease;
+    }
+
+    .status[hidden] { display: none; }
+    .status--loading { background: var(--accent-soft); color: var(--accent); }
+    .status--error { background: var(--danger-soft); color: var(--danger); }
+    .status--warn { background: var(--surface-2); color: var(--muted); }
+
+    @keyframes fade {
+      from { opacity: 0; transform: translateY(-2px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    /* Weather result */
+    .weather { text-align: center; }
+    .weather[hidden] { display: none; }
+
+    .weather-top {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+    }
+
+    .weather-icon {
+      font-size: 60px;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
+
+    .weather-readout { text-align: left; }
+
+    .weather-temp {
+      font-size: 48px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+    }
+
+    .weather-condition {
+      font-size: 15px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .weather-city {
+      font-size: 18px;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .weather-details {
+      list-style: none;
+      margin: 16px 0 0;
+      padding: 16px 0 0;
+      border-top: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .weather-details[hidden] { display: none; }
+
+    .detail {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    .detail-k { color: var(--muted); font-weight: 500; }
+    .detail-v { color: var(--text); font-weight: 600; }
+
+    /* 3-day forecast */
+    .forecast {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .forecast[hidden] { display: none; }
+
+    .forecast-title {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 12px;
+    }
+
+    .forecast-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .forecast-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 10px 4px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+    }
+
+    .forecast-day { font-size: 13px; font-weight: 600; }
+    .forecast-date { font-size: 11px; color: var(--muted); }
+    .forecast-icon { font-size: 26px; line-height: 1; margin: 3px 0; }
+
+    .forecast-cond {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.3;
+      text-align: center;
+    }
+
+    .forecast-temps {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .forecast-hi { color: var(--text); }
+    .forecast-lo { color: var(--muted); font-weight: 500; }
+
+    /* Matching places, when a city name is ambiguous */
+    .options-title {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 12px;
+    }
+
+    .options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .option-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      width: 100%;
+      padding: 10px 12px;
+      font: inherit;
+      text-align: left;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .option-item:hover { border-color: var(--accent); background: var(--surface-hover); }
+    .option-item.is-active { border-color: var(--accent); background: var(--accent-soft); }
+
+    .option-name { font-size: 15px; font-weight: 600; }
+    .option-region { font-size: 12px; color: var(--muted); }
+
+    footer {
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+      padding: 8px 0 4px;
+    }
+
+    @media (max-width: 380px) {
+      body { padding: 10px; }
+      header h1 { font-size: 21px; }
+      .search-form input { font-size: 14px; padding: 11px 12px; }
+      .search-btn { padding: 11px 14px; font-size: 14px; }
+      .weather-icon { font-size: 52px; }
+      .weather-temp { font-size: 42px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Weather</h1>
+      <div class="head-right">
+        <div class="date-today" id="todayLabel"></div>
+        <button type="button" class="theme-btn" id="themeBtn" aria-label="Toggle dark mode">🌙</button>
+      </div>
+    </header>
+
+    <!-- Search card -->
+    <section class="card">
+      <form class="search-form" id="searchForm" autocomplete="off">
+        <input type="text" id="cityInput" placeholder="Enter a city name…" aria-label="City name" maxlength="60" />
+        <button type="submit" class="search-btn">Search</button>
+      </form>
+      <div class="unit-row">
+        <span class="unit-label">Temperature unit</span>
+        <div class="unit-toggle" id="unitToggle" role="group" aria-label="Temperature unit">
+          <button type="button" class="unit-btn is-active" data-unit="C" aria-pressed="true">°C</button>
+          <button type="button" class="unit-btn" data-unit="F" aria-pressed="false">°F</button>
+        </div>
+      </div>
+      <p class="status" id="status" hidden></p>
+    </section>
+
+    <!-- Matching places — shown when one name matches several locations -->
+    <section class="card options" id="optionCard" hidden>
+      <h2 class="options-title">Several places match — choose one</h2>
+      <div class="options-list" id="optionsList"></div>
+    </section>
+
+    <!-- Weather result card -->
+    <section class="card weather" id="weatherCard" hidden>
+      <div class="weather-top">
+        <div class="weather-icon" id="weatherIcon">☀️</div>
+        <div class="weather-readout">
+          <div class="weather-temp" id="weatherTemp">--</div>
+          <div class="weather-condition" id="weatherCondition">—</div>
+        </div>
+      </div>
+      <div class="weather-city" id="weatherCity">—</div>
+      <ul class="weather-details" id="weatherDetails" hidden></ul>
+      <div class="forecast" id="weatherForecast" hidden>
+        <h2 class="forecast-title">3-day forecast</h2>
+        <div class="forecast-list" id="forecastList"></div>
+      </div>
+    </section>
+
+    <footer>Weather data from UAPI</footer>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      // ---------- config ----------
+      var API_URL = "https://uapis.cn/api/v1/misc/weather";
+      var PLACE_URL = "https://uapis.cn/api/v1/misc/district";
+      var THEME_KEY = "projects_theme";
+      var UNIT_KEY = "weather_unit";
+
+      var MSG_EMPTY = "Enter a city first.";
+      var MSG_LOADING = "Loading…";
+      var MSG_NOT_FOUND = "Couldn't find that city — check the spelling.";
+      var MSG_ERROR = "Something went wrong — please try again.";
+
+      // ---------- pinyin → Chinese city names ----------
+      // The place-search endpoint only understands Chinese, so pinyin input is
+      // resolved here first. One pinyin can cover several cities, which is the
+      // point: "suzhou" offers both 苏州 (江苏) and 宿州 (安徽).
+      // Covers China's province-level and prefecture-level cities.
+      var PINYIN_CITIES = {
+        // Municipalities
+        "beijing": "北京", "shanghai": "上海", "tianjin": "天津", "chongqing": "重庆",
+        // Hebei
+        "shijiazhuang": "石家庄", "tangshan": "唐山", "qinhuangdao": "秦皇岛", "handan": "邯郸",
+        "xingtai": "邢台", "baoding": "保定", "zhangjiakou": "张家口", "chengde": "承德",
+        "cangzhou": "沧州", "langfang": "廊坊", "hengshui": "衡水",
+        // Shanxi
+        "taiyuan": "太原", "datong": "大同", "yangquan": "阳泉", "changzhi": "长治",
+        "jincheng": "晋城", "shuozhou": "朔州", "jinzhong": "晋中", "yuncheng": "运城",
+        "xinzhou": "忻州", "linfen": "临汾", "lvliang": "吕梁",
+        // Inner Mongolia
+        "huhehaote": "呼和浩特", "baotou": "包头", "wuhai": "乌海", "chifeng": "赤峰",
+        "tongliao": "通辽", "eerduosi": "鄂尔多斯", "hulunbeier": "呼伦贝尔",
+        "bayannaoer": "巴彦淖尔", "wulanchabu": "乌兰察布", "xilinguole": "锡林郭勒",
+        "alashan": "阿拉善",
+        // Liaoning
+        "shenyang": "沈阳", "dalian": "大连", "anshan": "鞍山", "fushun": "抚顺",
+        "benxi": "本溪", "dandong": "丹东", "jinzhou": "锦州", "yingkou": "营口",
+        "fuxin": "阜新", "liaoyang": "辽阳", "panjin": "盘锦", "tieling": "铁岭",
+        "chaoyang": "朝阳", "huludao": "葫芦岛",
+        // Jilin
+        "changchun": "长春", "jilin": "吉林", "siping": "四平", "liaoyuan": "辽源",
+        "tonghua": "通化", "baishan": "白山", "songyuan": "松原", "baicheng": "白城",
+        "yanbian": "延边",
+        // Heilongjiang
+        "haerbin": "哈尔滨", "qiqihaer": "齐齐哈尔", "jixi": "鸡西", "hegang": "鹤岗",
+        "shuangyashan": "双鸭山", "daqing": "大庆", "jiamusi": "佳木斯", "qitaihe": "七台河",
+        "mudanjiang": "牡丹江", "heihe": "黑河", "suihua": "绥化", "daxinganling": "大兴安岭",
+        // Jiangsu
+        "nanjing": "南京", "wuxi": "无锡", "xuzhou": "徐州", "changzhou": "常州",
+        "nantong": "南通", "lianyungang": "连云港", "huaian": "淮安", "yancheng": "盐城",
+        "yangzhou": "扬州", "zhenjiang": "镇江", "suqian": "宿迁",
+        // Zhejiang
+        "hangzhou": "杭州", "ningbo": "宁波", "wenzhou": "温州", "jiaxing": "嘉兴",
+        "huzhou": "湖州", "shaoxing": "绍兴", "jinhua": "金华", "quzhou": "衢州",
+        "zhoushan": "舟山", "lishui": "丽水",
+        // Anhui
+        "hefei": "合肥", "wuhu": "芜湖", "bengbu": "蚌埠", "huainan": "淮南",
+        "maanshan": "马鞍山", "huaibei": "淮北", "tongling": "铜陵", "anqing": "安庆",
+        "huangshan": "黄山", "chuzhou": "滁州", "fuyang": "阜阳", "luan": "六安",
+        "bozhou": "亳州", "chizhou": "池州", "xuancheng": "宣城",
+        // Fujian
+        "xiamen": "厦门", "putian": "莆田", "sanming": "三明", "quanzhou": "泉州",
+        "zhangzhou": "漳州", "nanping": "南平", "longyan": "龙岩", "ningde": "宁德",
+        // Jiangxi
+        "nanchang": "南昌", "jingdezhen": "景德镇", "pingxiang": "萍乡", "jiujiang": "九江",
+        "xinyu": "新余", "yingtan": "鹰潭", "ganzhou": "赣州", "jian": "吉安",
+        "shangrao": "上饶",
+        // Shandong
+        "jinan": "济南", "qingdao": "青岛", "zibo": "淄博", "zaozhuang": "枣庄",
+        "dongying": "东营", "yantai": "烟台", "weifang": "潍坊", "jining": "济宁",
+        "taian": "泰安", "weihai": "威海", "rizhao": "日照", "linyi": "临沂",
+        "dezhou": "德州", "liaocheng": "聊城", "binzhou": "滨州", "heze": "菏泽",
+        // Henan
+        "zhengzhou": "郑州", "kaifeng": "开封", "luoyang": "洛阳", "pingdingshan": "平顶山",
+        "anyang": "安阳", "hebi": "鹤壁", "xinxiang": "新乡", "jiaozuo": "焦作",
+        "puyang": "濮阳", "xuchang": "许昌", "luohe": "漯河", "sanmenxia": "三门峡",
+        "nanyang": "南阳", "shangqiu": "商丘", "xinyang": "信阳", "zhoukou": "周口",
+        "zhumadian": "驻马店", "jiyuan": "济源",
+        // Hubei
+        "wuhan": "武汉", "huangshi": "黄石", "shiyan": "十堰", "yichang": "宜昌",
+        "xiangyang": "襄阳", "ezhou": "鄂州", "jingmen": "荆门", "xiaogan": "孝感",
+        "jingzhou": "荆州", "huanggang": "黄冈", "xianning": "咸宁", "suizhou": "随州",
+        "enshi": "恩施",
+        // Hunan
+        "changsha": "长沙", "zhuzhou": "株洲", "xiangtan": "湘潭", "hengyang": "衡阳",
+        "shaoyang": "邵阳", "yueyang": "岳阳", "changde": "常德", "zhangjiajie": "张家界",
+        "yiyang": "益阳", "chenzhou": "郴州", "yongzhou": "永州", "huaihua": "怀化",
+        "loudi": "娄底", "xiangxi": "湘西",
+        // Guangdong
+        "guangzhou": "广州", "shaoguan": "韶关", "shenzhen": "深圳", "zhuhai": "珠海",
+        "shantou": "汕头", "foshan": "佛山", "jiangmen": "江门", "zhanjiang": "湛江",
+        "maoming": "茂名", "zhaoqing": "肇庆", "huizhou": "惠州", "meizhou": "梅州",
+        "shanwei": "汕尾", "heyuan": "河源", "yangjiang": "阳江", "qingyuan": "清远",
+        "dongguan": "东莞", "zhongshan": "中山", "chaozhou": "潮州", "jieyang": "揭阳",
+        "yunfu": "云浮",
+        // Guangxi
+        "nanning": "南宁", "liuzhou": "柳州", "guilin": "桂林", "wuzhou": "梧州",
+        "beihai": "北海", "fangchenggang": "防城港", "qinzhou": "钦州", "guigang": "贵港",
+        "baise": "百色", "hezhou": "贺州", "hechi": "河池", "laibin": "来宾",
+        "chongzuo": "崇左",
+        // Hainan
+        "haikou": "海口", "sanya": "三亚", "sansha": "三沙", "danzhou": "儋州",
+        // Sichuan
+        "chengdu": "成都", "zigong": "自贡", "panzhihua": "攀枝花", "luzhou": "泸州",
+        "deyang": "德阳", "mianyang": "绵阳", "guangyuan": "广元", "suining": "遂宁",
+        "neijiang": "内江", "leshan": "乐山", "nanchong": "南充", "meishan": "眉山",
+        "yibin": "宜宾", "guangan": "广安", "dazhou": "达州", "yaan": "雅安",
+        "bazhong": "巴中", "ziyang": "资阳", "aba": "阿坝", "ganzi": "甘孜",
+        "liangshan": "凉山",
+        // Guizhou
+        "guiyang": "贵阳", "liupanshui": "六盘水", "zunyi": "遵义", "anshun": "安顺",
+        "bijie": "毕节", "tongren": "铜仁", "qianxinan": "黔西南", "qiandongnan": "黔东南",
+        "qiannan": "黔南",
+        // Yunnan
+        "kunming": "昆明", "qujing": "曲靖", "yuxi": "玉溪", "baoshan": "保山",
+        "zhaotong": "昭通", "lijiang": "丽江", "puer": "普洱", "lincang": "临沧",
+        "chuxiong": "楚雄", "honghe": "红河", "wenshan": "文山", "xishuangbanna": "西双版纳",
+        "dali": "大理", "dehong": "德宏", "nujiang": "怒江", "diqing": "迪庆",
+        // Tibet
+        "lasa": "拉萨", "rikaze": "日喀则", "changdu": "昌都", "linzhi": "林芝",
+        "shannan": "山南", "naqu": "那曲", "ali": "阿里",
+        // Shaanxi
+        "xian": "西安", "tongchuan": "铜川", "baoji": "宝鸡", "xianyang": "咸阳",
+        "weinan": "渭南", "yanan": "延安", "hanzhong": "汉中", "ankang": "安康",
+        "shangluo": "商洛",
+        // Gansu
+        "lanzhou": "兰州", "jiayuguan": "嘉峪关", "jinchang": "金昌", "baiyin": "白银",
+        "tianshui": "天水", "wuwei": "武威", "zhangye": "张掖", "pingliang": "平凉",
+        "jiuquan": "酒泉", "qingyang": "庆阳", "dingxi": "定西", "longnan": "陇南",
+        "linxia": "临夏", "gannan": "甘南",
+        // Qinghai
+        "xining": "西宁", "haidong": "海东", "haibei": "海北", "huangnan": "黄南",
+        "guoluo": "果洛", "yushu": "玉树", "haixi": "海西",
+        // Ningxia
+        "yinchuan": "银川", "shizuishan": "石嘴山", "wuzhong": "吴忠", "guyuan": "固原",
+        "zhongwei": "中卫",
+        // Xinjiang
+        "wulumuqi": "乌鲁木齐", "kelamayi": "克拉玛依", "tulufan": "吐鲁番", "hami": "哈密",
+        "changji": "昌吉", "boertala": "博尔塔拉", "bayinguoleng": "巴音郭楞",
+        "akesu": "阿克苏", "kezilesu": "克孜勒苏", "kashi": "喀什", "hetian": "和田",
+        "yili": "伊犁", "tacheng": "塔城", "aletai": "阿勒泰", "shihezi": "石河子",
+        // Homophones shared by two cities
+        "suzhou": "苏州|宿州", "taizhou": "泰州|台州", "fuzhou": "福州|抚州",
+        "yichun": "宜春|伊春", "yulin": "玉林|榆林",
+        // Taiwan, Hong Kong, Macau
+        "taibei": "台北", "xianggang": "香港", "aomen": "澳门"
+      };
+
+      // ---------- state ----------
+      var unit = "C";
+      try {
+        var savedUnit = localStorage.getItem(UNIT_KEY);
+        if (savedUnit === "C" || savedUnit === "F") unit = savedUnit;
+      } catch (e) {}
+
+      var lastWeather = null;   // last successful response, re-rendered on unit change
+
+      // ---------- elements ----------
+      var form = document.getElementById("searchForm");
+      var input = document.getElementById("cityInput");
+      var searchBtn = form.querySelector(".search-btn");
+      var statusEl = document.getElementById("status");
+      var unitToggle = document.getElementById("unitToggle");
+      var unitBtns = unitToggle.querySelectorAll(".unit-btn");
+      var card = document.getElementById("weatherCard");
+      var iconEl = document.getElementById("weatherIcon");
+      var tempEl = document.getElementById("weatherTemp");
+      var conditionEl = document.getElementById("weatherCondition");
+      var cityEl = document.getElementById("weatherCity");
+      var detailsEl = document.getElementById("weatherDetails");
+      var forecastSection = document.getElementById("weatherForecast");
+      var forecastList = document.getElementById("forecastList");
+      var optionCard = document.getElementById("optionCard");
+      var optionsList = document.getElementById("optionsList");
+
+      // ---------- helpers ----------
+      function showStatus(msg, type) {
+        statusEl.textContent = msg;
+        statusEl.className = "status" + (type ? " status--" + type : "");
+        statusEl.hidden = false;
+      }
+
+      function hideStatus() {
+        statusEl.hidden = true;
+      }
+
+      function formatTemp(value) {
+        if (value === null || value === undefined || value === "") return "--";
+        var n = Number(value);
+        if (isNaN(n)) return String(value);
+        var out = unit === "F" ? n * 9 / 5 + 32 : n;   // the API always reports °C
+        return (Math.round(out * 10) / 10) + "°" + unit;
+      }
+
+      function applyUnit() {
+        unitBtns.forEach(function (b) {
+          var active = b.getAttribute("data-unit") === unit;
+          b.classList.toggle("is-active", active);
+          b.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+      }
+
+      function setUnit(next) {
+        if (next !== "C" && next !== "F") return;
+        if (next === unit) return;
+        unit = next;
+        try { localStorage.setItem(UNIT_KEY, unit); } catch (e) {}
+        applyUnit();
+        // Re-render the visible readings, no new request needed.
+        if (lastWeather) {
+          tempEl.textContent = formatTemp(lastWeather.temperature);
+          renderForecast(lastWeather.forecast);
+        }
+      }
+
+      // Compact form for the forecast cards: whole degrees, no unit letter.
+      function formatShortTemp(value) {
+        if (value === null || value === undefined || value === "") return "--";
+        var n = Number(value);
+        if (isNaN(n)) return String(value);
+        var out = unit === "F" ? n * 9 / 5 + 32 : n;
+        return Math.round(out) + "°";
+      }
+
+      // Map the API condition text / icon code to an emoji icon.
+      function pickIcon(condition, iconCode) {
+        var t = String(condition || "");
+        if (/雷/.test(t)) return "⛈️";
+        if (/雨夹雪|雨雪|冻雨/.test(t)) return "🌨️";
+        if (/阵雨/.test(t)) return "🌦️";
+        if (/雨/.test(t)) return "🌧️";
+        if (/雪/.test(t)) return "❄️";
+        if (/雾|霾|沙|尘/.test(t)) return "🌫️";
+        if (/风|飑/.test(t)) return "🌬️";
+        if (/阴/.test(t)) return "☁️";
+        if (/多云|云/.test(t)) return "⛅";
+        if (/晴/.test(t)) return "☀️";
+        if (/热|冷/.test(t)) return "🌡️";
+
+        // Fallback: derive from the numeric icon code family.
+        var c = parseInt(String(iconCode || ""), 10);
+        if (c >= 300 && c < 400) return "🌧️";
+        if (c >= 400 && c < 500) return "❄️";
+        if (c >= 500 && c < 600) return "🌫️";
+        if (c >= 100 && c < 105) return "☁️";
+        return "🌡️";
+      }
+
+      function renderDetails(data) {
+        var rows = [];
+        if (data.humidity !== undefined && data.humidity !== null) {
+          rows.push(["💧 Humidity", data.humidity + "%"]);
+        }
+        var wind = [data.wind_direction, data.wind_power].filter(Boolean).join(" ");
+        if (wind) rows.push(["🌬️ Wind", wind]);
+        if (data.report_time) rows.push(["🕒 Updated", data.report_time]);
+
+        detailsEl.innerHTML = "";
+        rows.forEach(function (row) {
+          var li = document.createElement("li");
+          li.className = "detail";
+          var k = document.createElement("span");
+          k.className = "detail-k";
+          k.textContent = row[0];
+          var v = document.createElement("span");
+          v.className = "detail-v";
+          v.textContent = row[1];
+          li.appendChild(k);
+          li.appendChild(v);
+          detailsEl.appendChild(li);
+        });
+        detailsEl.hidden = rows.length === 0;
+      }
+
+      // ---------- 3-day forecast ----------
+      var FORECAST_DAYS = 3;
+
+      function localDateStr(d) {
+        var m = d.getMonth() + 1;
+        var day = d.getDate();
+        return d.getFullYear() + "-" + (m < 10 ? "0" + m : m) + "-" + (day < 10 ? "0" + day : day);
+      }
+
+      function weekdayShort(dateStr) {
+        var d = new Date(String(dateStr) + "T00:00:00");
+        if (isNaN(d.getTime())) return "";
+        return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
+      }
+
+      function shortDate(dateStr) {
+        var p = String(dateStr || "").split("-");
+        if (p.length !== 3) return String(dateStr || "");
+        return parseInt(p[1], 10) + "/" + parseInt(p[2], 10);
+      }
+
+      function renderForecast(list) {
+        var items = Array.isArray(list) ? list : [];
+        var today = localDateStr(new Date());
+
+        // The API's list starts with today; the current conditions are already
+        // shown above it, so show the days that follow.
+        var upcoming = items.filter(function (d) {
+          return d && typeof d.date === "string" && d.date > today;
+        });
+        if (!upcoming.length) upcoming = items;
+        upcoming = upcoming.slice(0, FORECAST_DAYS);
+
+        forecastList.innerHTML = "";
+        upcoming.forEach(function (d) {
+          var item = document.createElement("div");
+          item.className = "forecast-item";
+
+          var day = document.createElement("div");
+          day.className = "forecast-day";
+          day.textContent = weekdayShort(d.date) || d.week || "";
+
+          var date = document.createElement("div");
+          date.className = "forecast-date";
+          date.textContent = shortDate(d.date);
+
+          var icon = document.createElement("div");
+          icon.className = "forecast-icon";
+          icon.textContent = pickIcon(d.weather_day, null);
+
+          var cond = document.createElement("div");
+          cond.className = "forecast-cond";
+          cond.textContent = d.weather_day || "—";
+          if (d.weather_night && d.weather_night !== d.weather_day) {
+            cond.title = d.weather_day + " / " + d.weather_night;
+          }
+
+          var temps = document.createElement("div");
+          temps.className = "forecast-temps";
+          var hi = document.createElement("span");
+          hi.className = "forecast-hi";
+          hi.textContent = formatShortTemp(d.temp_max);
+          var lo = document.createElement("span");
+          lo.className = "forecast-lo";
+          lo.textContent = formatShortTemp(d.temp_min);
+          temps.appendChild(hi);
+          temps.appendChild(lo);
+
+          item.appendChild(day);
+          item.appendChild(date);
+          item.appendChild(icon);
+          item.appendChild(cond);
+          item.appendChild(temps);
+          forecastList.appendChild(item);
+        });
+
+        forecastSection.hidden = upcoming.length === 0;
+      }
+
+      function isNotFound(data) {
+        if (!data || typeof data !== "object") return true;
+        if (data.error) return true;              // e.g. {"error":"LOCATION_NOT_FOUND"}
+        if (data.code) return true;               // e.g. {"code":"INVALID_PARAMETER"}
+        if (!data.city) return true;
+        if (data.temperature === undefined || data.temperature === null) return true;
+        return false;
+      }
+
+      // ---------- matching places ----------
+      // The same name can cover several places, so look the name up first and
+      // show every match for the user to pick from.
+      function looksLikePinyin(text) {
+        return /^[a-zA-Z\s]+$/.test(text);
+      }
+
+      // Exact pinyin first; if nothing matches exactly, offer cities whose
+      // pinyin starts with what was typed ("suz" → 苏州 / 宿州 / 宿迁 …).
+      function matchPinyin(text) {
+        var key = text.toLowerCase().replace(/[^a-z]/g, "");
+        if (!key) return [];
+
+        if (PINYIN_CITIES[key]) return PINYIN_CITIES[key].split("|");
+
+        var out = [];
+        Object.keys(PINYIN_CITIES).forEach(function (k) {
+          if (out.length < 4 && k.indexOf(key) === 0) {
+            out = out.concat(PINYIN_CITIES[k].split("|"));
+          }
+        });
+        return out.slice(0, 4);
+      }
+
+      // Resolve pinyin into real places: every Chinese name is looked up for its
+      // exact adcode and region, so 江苏苏州 and 安徽宿州 become separate rows.
+      async function lookupPinyin(text) {
+        var names = matchPinyin(text);
+        var places = [];
+
+        for (var i = 0; i < names.length; i++) {
+          try {
+            var found = await lookupPlaces(names[i]);
+            var own = found.filter(function (p) {
+              return (p.name || "").indexOf(names[i]) === 0;
+            });
+            var place = own[0] || found[0];
+            if (place) places.push(place);
+          } catch (e) {}
+        }
+        return places;
+      }
+
+      async function lookupPlaces(name) {
+        var res = await fetch(PLACE_URL + "?keywords=" + encodeURIComponent(name) + "&limit=20", {
+          headers: { Accept: "application/json" }
+        });
+        if (!res.ok) return [];
+        var data = await res.json();
+        var list = Array.isArray(data.results) ? data.results : [];
+
+        // Streets and towns are noise for a city search; keep them only when
+        // that is all the API found.
+        var places = list.filter(function (p) { return p && p.level !== "street"; });
+        return (places.length ? places : list).slice(0, 8);
+      }
+
+      // "辽宁省 · 朝阳市" style label, without repeating the place's own name.
+      function regionText(place) {
+        var parts = [place.province, place.city, place.district, place.street].filter(function (v) {
+          return v && v !== place.name;
+        });
+        return parts.filter(function (v, i) { return parts.indexOf(v) === i; }).join(" · ");
+      }
+
+      function renderOptions(places) {
+        optionsList.innerHTML = "";
+        places.forEach(function (p) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "option-item";
+
+          var name = document.createElement("span");
+          name.className = "option-name";
+          name.textContent = p.name || "—";
+
+          var region = document.createElement("span");
+          region.className = "option-region";
+          region.textContent = regionText(p) || p.country || "";
+
+          btn.appendChild(name);
+          btn.appendChild(region);
+          btn.addEventListener("click", function () { choosePlace(p, btn); });
+          optionsList.appendChild(btn);
+        });
+        optionCard.hidden = places.length === 0;
+      }
+
+      async function choosePlace(place, btn) {
+        Array.prototype.forEach.call(optionsList.children, function (el) {
+          el.classList.toggle("is-active", el === btn);
+        });
+        if (place.name) input.value = place.name;
+        await loadWeather(place.adcode ? { adcode: place.adcode } : { city: place.name });
+      }
+
+      function resetResult() {
+        card.hidden = true;
+        optionCard.hidden = true;
+        optionsList.innerHTML = "";
+        lastWeather = null;
+      }
+
+      async function loadWeather(query) {
+        searchBtn.disabled = true;
+        card.hidden = true;
+        showStatus(MSG_LOADING, "loading");
+
+        try {
+          var url = API_URL + "?forecast=true";
+          Object.keys(query).forEach(function (k) {
+            url += "&" + k + "=" + encodeURIComponent(query[k]);
+          });
+
+          var res = await fetch(url, {
+            headers: { Accept: "application/json" }
+          });
+          var data = await res.json();
+
+          if (!res.ok || isNotFound(data)) {
+            lastWeather = null;
+            showStatus(MSG_NOT_FOUND, "error");
+            return;
+          }
+
+          hideStatus();
+          lastWeather = data;
+          iconEl.textContent = pickIcon(data.weather, data.weather_icon);
+          tempEl.textContent = formatTemp(data.temperature);
+          conditionEl.textContent = data.weather || "—";
+          cityEl.textContent = [data.city, data.province, data.district].filter(Boolean).join(" · ");
+          renderDetails(data);
+          renderForecast(data.forecast);
+          card.hidden = false;
+        } catch (e) {
+          lastWeather = null;
+          showStatus(MSG_ERROR, "error");
+        } finally {
+          searchBtn.disabled = false;
+        }
+      }
+
+      // ---------- search ----------
+      async function search(rawCity) {
+        var city = (rawCity || "").trim();
+        resetResult();
+
+        if (!city) {
+          showStatus(MSG_EMPTY, "warn");
+          return;
+        }
+
+        searchBtn.disabled = true;
+        showStatus(MSG_LOADING, "loading");
+
+        var places = [];
+        try {
+          places = looksLikePinyin(city) ? await lookupPinyin(city) : await lookupPlaces(city);
+        } catch (e) {
+          places = [];
+        }
+
+        if (places.length > 1) {
+          searchBtn.disabled = false;
+          hideStatus();
+          renderOptions(places);
+          return;
+        }
+
+        // One match, or none at all: load it directly. A single match is
+        // loaded by its exact adcode; otherwise fall back to a name lookup.
+        var query = places.length === 1 && places[0].adcode
+          ? { adcode: places[0].adcode }
+          : { city: city };
+        await loadWeather(query);
+      }
+
+      // ---------- events ----------
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var value = input.value;
+        search(value);
+      });
+
+      unitToggle.addEventListener("click", function (e) {
+        var btn = e.target.closest ? e.target.closest(".unit-btn") : null;
+        if (!btn) return;
+        setUnit(btn.getAttribute("data-unit"));
+      });
+
+      // ---------- today label ----------
+      function renderTodayLabel() {
+        var d = new Date();
+        var weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        document.getElementById("todayLabel").textContent =
+          weekdays[d.getDay()] + ", " + months[d.getMonth()] + " " + d.getDate();
+      }
+
+      // ---------- theme ----------
+      function currentTheme() {
+        return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+      }
+
+      function applyThemeIcon() {
+        document.getElementById("themeBtn").textContent = currentTheme() === "dark" ? "☀️" : "🌙";
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", currentTheme() === "dark" ? "#201a1d" : "#fbf5f0");
+      }
+
+      function toggleTheme() {
+        var next = currentTheme() === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+        applyThemeIcon();
+      }
+
+      document.getElementById("themeBtn").addEventListener("click", toggleTheme);
+
+      // ---------- init ----------
+      renderTodayLabel();
+      applyThemeIcon();
+      applyUnit();
+
+      // ---------- embed height ----------
+      // When embedded (e.g. in the Projects page) tell the parent how tall our
+      // content really is, so the page can size the frame to fit it exactly
+      // instead of clipping the result card.
+      if (window.parent !== window) {
+        var appEl = document.querySelector(".app");
+
+        function reportHeight() {
+          if (!appEl) return;
+          var cs = getComputedStyle(document.body);
+          var pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+          var h = Math.ceil(appEl.getBoundingClientRect().height + pad);
+          try {
+            window.parent.postMessage({ type: "weather-embed-height", height: h }, "*");
+          } catch (e) {}
+        }
+
+        if (typeof ResizeObserver === "function") {
+          new ResizeObserver(reportHeight).observe(appEl);
+        }
+        window.addEventListener("load", reportHeight);
+        window.addEventListener("resize", reportHeight);
+        reportHeight();
+      }
+    })();
+  </script>
+</body>
+</html>

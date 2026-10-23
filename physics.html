@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Mechanics Phenomena Visualized</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #07070d;
+      color: #dfe6ff;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+    }
+    #app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Title bar */
+    header {
+      padding: 10px 16px;
+      text-align: center;
+      border-bottom: 1px solid rgba(100, 150, 255, 0.18);
+      background: linear-gradient(180deg, rgba(18, 28, 56, 0.85), transparent);
+      flex: 0 0 auto;
+    }
+    header h1 {
+      font-size: 16px;
+      margin: 0;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: #a8b8ff;
+      text-shadow: 0 0 12px rgba(130, 170, 255, 0.45);
+    }
+
+    /* Canvas area */
+    #canvasWrap {
+      flex: 1;
+      position: relative;
+      background: #000;
+      overflow: hidden;
+      min-height: 320px;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    /* Control panel (top-left) */
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(12, 18, 36, 0.82);
+      border: 1px solid rgba(100, 150, 255, 0.25);
+      border-radius: 10px;
+      padding: 12px 14px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      width: 218px;
+      z-index: 10;
+      box-shadow: 0 4px 20px rgba(60, 90, 160, 0.2);
+    }
+    .ctrl-row { margin-bottom: 9px; }
+    .ctrl-row:last-of-type { margin-bottom: 0; }
+    .ctrl-label {
+      font-size: 10.5px;
+      color: #8899bb;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      letter-spacing: 0.3px;
+    }
+    .ctrl-label span.val {
+      color: #a8b8ff;
+      font-family: 'Consolas', 'Menlo', monospace;
+      font-size: 10.5px;
+    }
+    .ctrl-row input[type="range"] {
+      width: 100%;
+      height: 4px;
+      background: rgba(100, 150, 255, 0.2);
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .ctrl-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #6496ff;
+      box-shadow: 0 0 8px rgba(100, 150, 255, 0.6);
+      cursor: pointer;
+    }
+    .ctrl-row input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #6496ff;
+      border: none;
+      cursor: pointer;
+    }
+    .ctrl-toggle {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11.5px;
+      color: #c0d0ff;
+      cursor: pointer;
+      user-select: none;
+    }
+    .ctrl-toggle input[type="checkbox"] {
+      accent-color: #6496ff;
+      width: 13px;
+      height: 13px;
+    }
+    .ctrl-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(100, 150, 255, 0.15);
+    }
+    .ctrl-btn {
+      background: rgba(50, 80, 150, 0.28);
+      border: 1px solid rgba(100, 150, 255, 0.35);
+      color: #c0d0ff;
+      padding: 6px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      font-family: inherit;
+    }
+    .ctrl-btn:hover {
+      background: rgba(80, 120, 200, 0.45);
+      box-shadow: 0 0 10px rgba(100, 150, 255, 0.25);
+    }
+    .ctrl-btn:active { transform: scale(0.95); }
+
+    /* Body count (top-right) */
+    #ballCount {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(12, 18, 36, 0.82);
+      border: 1px solid rgba(100, 150, 255, 0.25);
+      border-radius: 8px;
+      padding: 7px 14px;
+      font-family: 'Consolas', 'Menlo', monospace;
+      font-size: 13px;
+      color: #c0d0ff;
+      z-index: 10;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    #ballCount .num {
+      color: #ff8899;
+      font-weight: 700;
+      text-shadow: 0 0 8px rgba(255, 136, 153, 0.5);
+      margin-left: 4px;
+    }
+
+    /* Bottom instruction hint */
+    #hint {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10.5px;
+      color: rgba(160, 180, 220, 0.45);
+      letter-spacing: 0.5px;
+      z-index: 10;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 420px) {
+      header h1 { font-size: 13px; letter-spacing: 2px; }
+      #controls { width: 175px; padding: 10px 11px; top: 8px; left: 8px; }
+      .ctrl-label { font-size: 9.5px; }
+      .ctrl-label span.val { font-size: 9.5px; }
+      .ctrl-btn { font-size: 9.5px; padding: 5px 6px; }
+      #hint { font-size: 9px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Mechanics Phenomena Visualized</h1>
+  </header>
+  <div id="canvasWrap">
+    <canvas id="sim"></canvas>
+
+    <div id="controls">
+      <div class="ctrl-row">
+        <div class="ctrl-label">Gravity Strength <span class="val" id="gVal">0.50</span></div>
+        <input type="range" id="gSlider" min="0" max="2" step="0.05" value="0.5" />
+      </div>
+      <div class="ctrl-row">
+        <div class="ctrl-label">Expansion <span class="val" id="expVal">0.000</span></div>
+        <input type="range" id="expSlider" min="-0.02" max="0.02" step="0.001" value="0" />
+      </div>
+      <div class="ctrl-row">
+        <div class="ctrl-label">New Body Mass <span class="val" id="massVal">80</span></div>
+        <input type="range" id="massSlider" min="20" max="500" step="10" value="80" />
+      </div>
+      <div class="ctrl-row">
+        <label class="ctrl-toggle">
+          <input type="checkbox" id="trailsToggle" /> Show Motion Trails
+        </label>
+      </div>
+      <div class="ctrl-row">
+        <label class="ctrl-toggle">
+          <input type="checkbox" id="mergeToggle" checked /> Merging on Collision
+        </label>
+      </div>
+      <div class="ctrl-buttons">
+        <button class="ctrl-btn" id="pauseBtn">⏸ Pause</button>
+        <button class="ctrl-btn" id="clearBtn">✕ Clear</button>
+        <button class="ctrl-btn" id="galaxyBtn">✦ Galaxy</button>
+        <button class="ctrl-btn" id="binaryBtn">◉ Binary</button>
+      </div>
+    </div>
+
+    <div id="ballCount">Bodies<span class="num" id="countNum">0</span></div>
+    <div id="hint">Drag to launch a body — Click to place at rest — sliders tune G &amp; expansion</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var canvas = document.getElementById("sim");
+  var ctx = canvas.getContext("2d");
+  var wrap = document.getElementById("canvasWrap");
+
+  // ---- Control refs ----
+  var gSlider    = document.getElementById("gSlider");
+  var gVal       = document.getElementById("gVal");
+  var expSlider  = document.getElementById("expSlider");
+  var expVal     = document.getElementById("expVal");
+  var massSlider = document.getElementById("massSlider");
+  var massVal    = document.getElementById("massVal");
+  var trailsToggle = document.getElementById("trailsToggle");
+  var mergeToggle  = document.getElementById("mergeToggle");
+  var pauseBtn  = document.getElementById("pauseBtn");
+  var clearBtn  = document.getElementById("clearBtn");
+  var galaxyBtn = document.getElementById("galaxyBtn");
+  var binaryBtn = document.getElementById("binaryBtn");
+  var countNum  = document.getElementById("countNum");
+
+  // ---- Simulation state ----
+  var bodies = [];
+  var paused = false;
+
+  // ---- Physics constants ----
+  var G            = 0.5;    // gravitational strength (slider-tunable)
+  var expansion    = 0;      // Hubble-style radial velocity
+  var newBodyMass  = 80;     // mass of next spawned body (slider-tunable)
+  var showTrails   = false;
+  var mergeEnabled = true;
+  var EPSILON      = 50;     // softening denominator (prevents blow-up at close range)
+  var DT           = 1.0;    // simulation units per frame
+  var SUBSTEPS     = 4;     // substeps per frame for stability
+
+  // ---- Canvas sizing ----
+  var W = 0, H = 0;
+  function resize() {
+    var r = wrap.getBoundingClientRect();
+    W = Math.max(1, Math.floor(r.width));
+    H = Math.max(1, Math.floor(r.height));
+    canvas.width  = W;
+    canvas.height = H;
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  // ---- Body model ----
+  // type: "star" = large glowing body, "comet" = white shooting-star asteroid with tail
+  function createBody(x, y, vx, vy, mass, type) {
+    return {
+      x: x, y: y, vx: vx, vy: vy,
+      mass: mass,
+      radius: Math.max(2.5, Math.sqrt(mass) * 0.85),
+      type: type || "star"
+    };
+  }
+
+  // ---- Render helpers ----
+
+  // Draw a large vibrant Galaxy-style star (blue→purple→pink, matching reference image)
+  function drawGalaxyStar(b) {
+    var r = b.radius;
+    // Mass-dependent size boost so heavy galaxy stars fill the scene
+    var visualR = Math.max(r, Math.sqrt(b.mass) * 0.9);
+
+    // 1) Huge outer glow — purple-pink halo
+    var glowOuter = visualR * 4.5;
+    var glow = ctx.createRadialGradient(b.x, b.y, visualR * 0.8, b.x, b.y, glowOuter);
+    glow.addColorStop(0, "rgba(180, 110, 255, 0.45)");
+    glow.addColorStop(0.35, "rgba(130, 80, 230, 0.20)");
+    glow.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, glowOuter, 0, Math.PI * 2);
+    ctx.fillStyle = glow;
+    ctx.fill();
+
+    // 2) Inner tighter cyan-blue glow for extra pop
+    var innerGlow = visualR * 2.2;
+    var ig = ctx.createRadialGradient(b.x, b.y, visualR * 0.5, b.x, b.y, innerGlow);
+    ig.addColorStop(0, "rgba(120, 200, 255, 0.35)");
+    ig.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, innerGlow, 0, Math.PI * 2);
+    ctx.fillStyle = ig;
+    ctx.fill();
+
+    // 3) Swirly 3D planet body (offset light at top-left)
+    var lx = b.x - visualR * 0.30;
+    var ly = b.y - visualR * 0.30;
+    var grad = ctx.createRadialGradient(lx, ly, visualR * 0.05, b.x, b.y, visualR);
+    grad.addColorStop(0, "rgba(255, 240, 255, 0.95)");      // white-pink hot highlight
+    grad.addColorStop(0.18, "rgba(255, 180, 230, 0.95)");   // pink
+    grad.addColorStop(0.45, "rgba(160, 110, 240, 0.9)");    // purple
+    grad.addColorStop(0.75, "rgba(60, 80, 200, 0.85)");     // blue
+    grad.addColorStop(1, "rgba(20, 30, 80, 1)");            // dark blue edge
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, visualR, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // 4) Subtle swirl streaks (two thin curved arcs at top and bottom)
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, visualR, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.strokeStyle = "rgba(255, 200, 240, 0.18)";
+    ctx.lineWidth = Math.max(1, visualR * 0.08);
+    ctx.beginPath();
+    ctx.arc(b.x - visualR * 0.15, b.y + visualR * 0.05, visualR * 0.85, -0.5, 0.8);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(100, 180, 255, 0.18)";
+    ctx.beginPath();
+    ctx.arc(b.x + visualR * 0.1, b.y - visualR * 0.15, visualR * 0.75, 2.2, 4.0);
+    ctx.stroke();
+    ctx.restore();
+
+    // 5) Bright white specular highlight
+    if (visualR > 10) {
+      var specR = visualR * 0.22;
+      var sg = ctx.createRadialGradient(lx, ly, 0, lx, ly, specR);
+      sg.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+      sg.addColorStop(1, "rgba(255, 255, 255, 0)");
+      ctx.beginPath();
+      ctx.arc(lx, ly, specR, 0, Math.PI * 2);
+      ctx.fillStyle = sg;
+      ctx.fill();
+    }
+  }
+
+  // Draw a classic warm star/planet — varied per-body palette, 3D shaded
+  function drawStarBody(b) {
+    var r = b.radius;
+
+    // 1) Outer glow
+    var glowOuter = r * 3.2;
+    var glow = ctx.createRadialGradient(b.x, b.y, r * 0.9, b.x, b.y, glowOuter);
+    glow.addColorStop(0, "rgba(255, 120, 100, 0.5)");
+    glow.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, glowOuter, 0, Math.PI * 2);
+    ctx.fillStyle = glow;
+    ctx.fill();
+
+    // 2) 3D sphere — warm red/orange
+    var lx = b.x - r * 0.35;
+    var ly = b.y - r * 0.35;
+    var grad = ctx.createRadialGradient(lx, ly, r * 0.05, b.x, b.y, r);
+    grad.addColorStop(0, "rgba(255, 245, 230, 0.95)");
+    grad.addColorStop(0.35, "rgba(255, 130, 100, 0.95)");
+    grad.addColorStop(1, "rgba(120, 30, 40, 1)");
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // 3) Specular highlight
+    if (r > 4) {
+      var specR = r * 0.18;
+      var sg = ctx.createRadialGradient(lx, ly, 0, lx, ly, specR);
+      sg.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+      sg.addColorStop(1, "rgba(255, 255, 255, 0)");
+      ctx.beginPath();
+      ctx.arc(lx, ly, specR, 0, Math.PI * 2);
+      ctx.fillStyle = sg;
+      ctx.fill();
+    }
+  }
+
+  // Draw a white glowing comet / shooting-star with a velocity-aligned tail
+  function drawCometBody(b) {
+    // Visual radius scaled bigger so they're not tiny
+    var r = Math.max(b.radius, Math.sqrt(b.mass) * 1.4);
+
+    // 1) Tail — tapered gradient strip opposite to velocity
+    var speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+    if (speed > 0.5) {
+      var tailLen = Math.min(60, 18 + speed * 3);
+      var ux = -b.vx / speed;
+      var uy = -b.vy / speed;
+      var tipX = b.x + ux * tailLen;
+      var tipY = b.y + uy * tailLen;
+      var perpX = -uy;
+      var perpY = ux;
+      var tailW = r * 1.2;
+
+      ctx.beginPath();
+      ctx.moveTo(b.x + perpX * tailW, b.y + perpY * tailW);
+      ctx.lineTo(tipX + perpX * tailW * 0.3, tipY + perpY * tailW * 0.3);
+      ctx.lineTo(tipX, tipY);
+      ctx.lineTo(tipX - perpX * tailW * 0.3, tipY - perpY * tailW * 0.3);
+      ctx.lineTo(b.x - perpX * tailW, b.y - perpY * tailW);
+      ctx.closePath();
+
+      var tailGrad = ctx.createLinearGradient(b.x, b.y, tipX, tipY);
+      tailGrad.addColorStop(0, "rgba(220, 240, 255, 0.85)");
+      tailGrad.addColorStop(0.5, "rgba(150, 200, 255, 0.35)");
+      tailGrad.addColorStop(1, "rgba(120, 170, 255, 0)");
+      ctx.fillStyle = tailGrad;
+      ctx.fill();
+    }
+
+    // 2) Outer white glow halo
+    var glowOuter = r * 2.8;
+    var glow = ctx.createRadialGradient(b.x, b.y, r * 0.7, b.x, b.y, glowOuter);
+    glow.addColorStop(0, "rgba(220, 240, 255, 0.75)");
+    glow.addColorStop(0.4, "rgba(180, 210, 255, 0.3)");
+    glow.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, glowOuter, 0, Math.PI * 2);
+    ctx.fillStyle = glow;
+    ctx.fill();
+
+    // 3) Bright white/blue core sphere
+    var coreGrad = ctx.createRadialGradient(
+      b.x - r * 0.25, b.y - r * 0.25, 0,
+      b.x, b.y, r
+    );
+    coreGrad.addColorStop(0, "rgba(255, 255, 255, 1)");
+    coreGrad.addColorStop(0.55, "rgba(210, 230, 255, 0.95)");
+    coreGrad.addColorStop(1, "rgba(140, 180, 255, 0.5)");
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = coreGrad;
+    ctx.fill();
+  }
+
+  // Simple red rendering — used for the drag ghost
+  function drawGhostStar(b, alpha) {
+    var r = b.radius;
+    ctx.globalAlpha = alpha;
+
+    var glowOuter = r * 3.2;
+    var g = ctx.createRadialGradient(b.x, b.y, r * 0.9, b.x, b.y, glowOuter);
+    g.addColorStop(0, "rgba(255, 120, 100, 0.5)");
+    g.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, glowOuter, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+
+    var lx = b.x - r * 0.35;
+    var ly = b.y - r * 0.35;
+    var grad = ctx.createRadialGradient(lx, ly, r * 0.05, b.x, b.y, r);
+    grad.addColorStop(0, "rgba(255, 245, 230, 0.95)");
+    grad.addColorStop(0.35, "rgba(255, 130, 100, 0.95)");
+    grad.addColorStop(1, "rgba(120, 30, 40, 1)");
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+  }
+
+  // ---- Drag / click input ----
+  var dragging       = false;
+  var dragStart      = null;   // where the new body originates
+  var dragCur        = null;
+  var DRAG_THRESHOLD = 5;      // px — below this treated as click-to-place
+
+  function getXY(evt) {
+    var r = canvas.getBoundingClientRect();
+    return { x: evt.clientX - r.left, y: evt.clientY - r.top };
+  }
+
+  function handleDown(xy) {
+    dragging  = true;
+    dragStart = xy;
+    dragCur   = xy;
+  }
+  function handleMove(xy) {
+    if (!dragging) return;
+    dragCur = xy;
+  }
+  function handleUp(xy) {
+    if (!dragging) return;
+    dragging = false;
+    var dx   = xy.x - dragStart.x;
+    var dy   = xy.y - dragStart.y;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < DRAG_THRESHOLD) {
+      // Click → place at rest
+      bodies.push(createBody(xy.x, xy.y, 0, 0, newBodyMass));
+    } else {
+      // Drag & release → slingshot. Velocity opposes drag direction.
+      var launchSpeed = dist * 0.075;
+      var len          = dist || 1;
+      var vx = -dx / len * launchSpeed;
+      var vy = -dy / len * launchSpeed;
+      bodies.push(createBody(dragStart.x, dragStart.y, vx, vy, newBodyMass));
+    }
+    dragStart = dragCur = null;
+  }
+
+  canvas.addEventListener("mousedown", function (e) { handleDown(getXY(e)); });
+  canvas.addEventListener("mousemove", function (e) { handleMove(getXY(e)); });
+  canvas.addEventListener("mouseup",   function (e) { handleUp(getXY(e)); });
+  canvas.addEventListener("mouseleave", function () { dragging = false; dragStart = dragCur = null; });
+
+  // Touch (single finger only)
+  canvas.addEventListener("touchstart", function (e) {
+    e.preventDefault();
+    var t = e.touches[0];
+    handleDown({ x: t.clientX - canvas.getBoundingClientRect().left, y: t.clientY - canvas.getBoundingClientRect().top });
+  }, { passive: false });
+  canvas.addEventListener("touchmove", function (e) {
+    e.preventDefault();
+    var t = e.touches[0];
+    handleMove({ x: t.clientX - canvas.getBoundingClientRect().left, y: t.clientY - canvas.getBoundingClientRect().top });
+  }, { passive: false });
+  canvas.addEventListener("touchend", function (e) {
+    e.preventDefault();
+    if (!dragStart) return;
+    // For touch we treat the last dragCur as the "up" point
+    handleUp(dragCur || dragStart);
+  }, { passive: false });
+
+  // ---- Physics step ----
+  function step() {
+    var subdt = DT / SUBSTEPS;
+    var cx0 = W / 2, cy0 = H / 2;
+
+    for (var s = 0; s < SUBSTEPS; s++) {
+      // Always use the CURRENT body count; merge may have shrunk us since last pass.
+      var n = bodies.length;
+      if (n < 2) continue;   // nothing to do for 0 or 1 bodies
+
+      var ax = new Array(n);
+      var ay = new Array(n);
+      for (var i = 0; i < n; i++) { ax[i] = 0; ay[i] = 0; }
+
+      // Pairwise gravity (softened, 1/r^2 repulsion near zero prevents blow-up)
+      for (var i = 0; i < n; i++) {
+        var bi = bodies[i];
+        if (!bi) continue;
+        for (var j = i + 1; j < n; j++) {
+          var bj = bodies[j];
+          if (!bj) continue;
+          var dx = bj.x - bi.x;
+          var dy = bj.y - bi.y;
+          var r2 = dx * dx + dy * dy + EPSILON * EPSILON;
+          var r  = Math.sqrt(r2);
+          // F/m on bi toward bj = G * mj / r^2, directed along (dx,dy)/r
+          var g_over_r3 = G / (r2 * r);
+          var fbi = bj.mass * g_over_r3;
+          ax[i] += fbi * dx;
+          ay[i] += fbi * dy;
+          var fbj = bi.mass * g_over_r3;
+          ax[j] -= fbj * dx;
+          ay[j] -= fbj * dy;
+        }
+      }
+
+      // Semi-implicit Euler: velocity → position (in that order)
+      for (var i = 0; i < n; i++) {
+        var b = bodies[i];
+        if (!b) continue;
+        b.vx += ax[i] * subdt;
+        b.vy += ay[i] * subdt;
+
+        // Hubble-style expansion: outward velocity from center
+        if (expansion !== 0) {
+          b.vx += (b.x - cx0) * expansion * subdt;
+          b.vy += (b.y - cy0) * expansion * subdt;
+        }
+
+        b.x += b.vx * subdt;
+        b.y += b.vy * subdt;
+      }
+
+      // Collisions — merge j into i; use dynamic bodies.length so a merge
+      // does not let a stale index reach a now-shorter array.
+      if (mergeEnabled) {
+        for (var i = 0; i < bodies.length; i++) {
+          var bi = bodies[i];
+          if (!bi) break;
+          for (var j = i + 1; j < bodies.length; ) {
+            var bj = bodies[j];
+            if (!bj) { j++; continue; }
+            var dx = bj.x - bi.x;
+            var dy = bj.y - bi.y;
+            var dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < bi.radius + bj.radius) {
+              var tm = bi.mass + bj.mass;
+              bi.vx = (bi.vx * bi.mass + bj.vx * bj.mass) / tm;
+              bi.vy = (bi.vy * bi.mass + bj.vy * bj.mass) / tm;
+              bi.x  = (bi.x  * bi.mass + bj.x  * bj.mass) / tm;
+              bi.y  = (bi.y  * bi.mass + bj.y  * bj.mass) / tm;
+              bi.mass   = tm;
+              bi.radius = Math.max(2.5, Math.sqrt(tm) * 0.85);
+              bodies.splice(j, 1);
+              // After splice the NEXT shifted element is still at j;
+              // keep j where it is to check it in the next inner iteration.
+            } else {
+              j++;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ---- Render ----
+  function draw() {
+    // Trails: draw semi-transparent black over previous frame
+    if (showTrails) {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+      ctx.fillRect(0, 0, W, H);
+    } else {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // Starfield backdrop — dense twinkling stars (only on full clear)
+    if (!showTrails) {
+      // Deterministic per-frame star positions from a seeded offset so they appear
+      // subtly twinkling but never flicker wildly.
+      var frame = Math.floor(performance.now() / 500);
+      ctx.save();
+      for (var k = 0; k < 140; k++) {
+        var sx = ((k * 137 + frame * 31) % 1000) / 1000 * W;
+        var sy = ((k * 239 + frame * 17) % 1000) / 1000 * H;
+        var twinkle = 0.35 + 0.35 * Math.sin(frame * 0.6 + k * 0.3);
+        var size = (k % 7 === 0) ? 2 : 1;
+        ctx.fillStyle = "rgba(255, 255, 255, " + (0.25 + twinkle * 0.55) + ")";
+        ctx.beginPath();
+        ctx.arc(sx, sy, size, 0, Math.PI * 2);
+        ctx.fill();
+        // bright stars get a tiny glow
+        if (k % 11 === 0) {
+          ctx.fillStyle = "rgba(180, 220, 255, 0.18)";
+          ctx.beginPath();
+          ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+
+    // ---- Bodies — branch by type ----
+    // Mass-based heuristic too: very heavy bodies (>= 1500 mass) that happen to
+    // be "star" type get the vibrant Galaxy-style rendering.
+    for (var i = 0; i < bodies.length; i++) {
+      var b = bodies[i];
+      if (!b) continue;
+      if (b.type === "comet") {
+        drawCometBody(b);
+      } else if (b.mass >= 1500) {
+        drawGalaxyStar(b);
+      } else {
+        drawStarBody(b);
+      }
+    }
+
+    // Drag preview — ghost body + launch direction arrow
+    if (dragging && dragStart) {
+      var ghostBody = createBody(
+        dragStart.x, dragStart.y, 0, 0,
+        newBodyMass, "star"
+      );
+      drawGhostStar(ghostBody, 0.55);
+
+      if (dragCur) {
+        var dx = dragCur.x - dragStart.x;
+        var dy = dragCur.y - dragStart.y;
+        var len = Math.sqrt(dx * dx + dy * dy);
+        if (len > 3) {
+          var ux = dx / len, uy = dy / len;
+          // Launch direction is OPPOSITE to drag (slingshot): pull back → flies forward
+          var arrowLen = Math.min(len, 90);
+          var ex = dragStart.x - ux * arrowLen;
+          var ey = dragStart.y - uy * arrowLen;
+
+          ctx.strokeStyle = "rgba(255, 220, 170, 0.85)";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 3]);
+          ctx.beginPath();
+          ctx.moveTo(dragStart.x, dragStart.y);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Arrowhead
+          var ang = Math.atan2(ey - dragStart.y, ex - dragStart.x);
+          ctx.fillStyle = "rgba(255, 220, 170, 0.9)";
+          ctx.beginPath();
+          ctx.moveTo(ex, ey);
+          ctx.lineTo(ex - 9 * Math.cos(ang - 0.35), ey - 9 * Math.sin(ang - 0.35));
+          ctx.lineTo(ex - 9 * Math.cos(ang + 0.35), ey - 9 * Math.sin(ang + 0.35));
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+
+    countNum.textContent = bodies.length;
+  }
+
+  // ---- Main loop ----
+  var running  = true;
+  function loop(timestamp) {
+    if (!running) return;
+    if (!paused) step();
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // ---- Presets ----
+  function presetGalaxy() {
+    bodies = [];
+    var cx = W / 2, cy = H / 2;
+    var scale = Math.min(W, H) / 500;
+    // Huge vibrant central star — renders with blue→purple→pink swirl
+    var starMass = 6000;
+    bodies.push(createBody(cx, cy, 0, 0, starMass, "star"));
+
+    // 12 bigger comet/asteroid bodies orbiting, type "comet" → white shooting-star
+    var radii = [150, 210, 275, 340, 410, 480, 550, 625, 700, 775, 850, 925];
+    for (var i = 0; i < radii.length; i++) {
+      var r = radii[i] * scale;
+      var angle = Math.random() * Math.PI * 2;
+      var px = cx + Math.cos(angle) * r;
+      var py = cy + Math.sin(angle) * r;
+      // Heavier than before — visual radius scaled up → visibly "bigger"
+      var m = 18 + Math.random() * 18;
+      var v = Math.sqrt(G * starMass / r);
+      bodies.push(createBody(
+        px, py,
+        -Math.sin(angle) * v, Math.cos(angle) * v,
+        m, "comet"
+      ));
+    }
+  }
+
+  function presetBinary() {
+    bodies = [];
+    var cx = W / 2, cy = H / 2;
+    var scale = Math.min(W, H) / 500;
+    var sep = 140 * scale;
+    var m1 = 3200, m2 = 3200;
+
+    // Two equal-mass stars (type "star" → vibrant galaxy rendering because mass >= 1500)
+    var v = Math.sqrt(G * m2 * m2 / ((m1 + m2) * sep));
+    bodies.push(createBody(cx - sep / 2, cy, 0, -v, m1, "star"));
+    bodies.push(createBody(cx + sep / 2, cy, 0,  v, m2, "star"));
+
+    // Outer comets — white shooting stars
+    var totalMass = m1 + m2;
+    for (var i = 0; i < 8; i++) {
+      var r = (sep + 80 + i * 40) * scale;
+      var angle = Math.random() * Math.PI * 2;
+      var px = cx + Math.cos(angle) * r;
+      var py = cy + Math.sin(angle) * r;
+      var m = 15 + Math.random() * 20;
+      var vv = Math.sqrt(G * totalMass / r);
+      bodies.push(createBody(
+        px, py,
+        -Math.sin(angle) * vv, Math.cos(angle) * vv,
+        m, "comet"
+      ));
+    }
+  }
+
+  // ---- Control handlers ----
+  gSlider.addEventListener("input", function () {
+    G = parseFloat(gSlider.value);
+    gVal.textContent = G.toFixed(2);
+  });
+  expSlider.addEventListener("input", function () {
+    expansion = parseFloat(expSlider.value);
+    expVal.textContent = expansion.toFixed(3);
+  });
+  massSlider.addEventListener("input", function () {
+    newBodyMass = parseInt(massSlider.value, 10);
+    massVal.textContent = newBodyMass;
+  });
+  trailsToggle.addEventListener("change", function () {
+    showTrails = trailsToggle.checked;
+  });
+  mergeToggle.addEventListener("change", function () {
+    mergeEnabled = mergeToggle.checked;
+  });
+  pauseBtn.addEventListener("click", function () {
+    paused = !paused;
+    pauseBtn.textContent = paused ? "▶ Resume" : "⏸ Pause";
+  });
+  clearBtn.addEventListener("click", function () {
+    bodies = [];
+  });
+  galaxyBtn.addEventListener("click", presetGalaxy);
+  binaryBtn.addEventListener("click", presetBinary);
+
+  // Auto-load Galaxy once layout is measured
+  setTimeout(function () {
+    resize();
+    presetGalaxy();
+  }, 60);
+
+  // ---- Embed auto-height reporter (mirrors weather.html pattern) ----
+  if (window.parent !== window) {
+    function reportHeight() {
+      var h = Math.max(
+        document.body.scrollHeight,
+        document.body.offsetHeight,
+        document.documentElement.scrollHeight,
+        document.documentElement.offsetHeight
+      );
+      parent.postMessage({ type: "physics-embed-height", height: h }, "*");
+    }
+    setInterval(reportHeight, 350);
+    window.addEventListener("load", reportHeight);
+    window.addEventListener("resize", reportHeight);
+  }
+})();
+</script>
+</body>
+</html>
